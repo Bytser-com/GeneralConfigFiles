@@ -5,6 +5,11 @@
 # Powershell version's:
 # PowerShell 7.5.4 -> Tested - No known issues
 
+# For full functionality of this profile you need to install some additional modules
+# Execute the following commands to install (Only first time - not every session)
+#Install-Module posh-git -Scope CurrentUser
+#Install-Module DockerCompletion -Scope CurrentUser
+
 # ----------------------------
 # GIT Autocompletion
 # ----------------------------
@@ -92,7 +97,7 @@ Options:
 # ----------------------------
 
 # Reset powershell history used for autocompletion to erase all executed commands:
-# Remove-Item (Get-PSReadLineOption).HistorySavePath -Force
+#Remove-Item (Get-PSReadLineOption).HistorySavePath -Force
 
 Set-PSReadLineOption -EditMode Windows
 Set-PSReadLineOption -PredictionSource History
