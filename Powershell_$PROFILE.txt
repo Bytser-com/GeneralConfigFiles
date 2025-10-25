@@ -1,0 +1,109 @@
+# ================================================================================================
+# PowerShell Profile — Git Completion + Docker Completion + Docker Clean + History Completion
+# ================================================================================================
+
+# Powershell version's:
+# PowerShell 7.5.4 -> Tested - No known issues
+
+# ----------------------------
+# GIT Autocompletion
+# ----------------------------
+Import-Module posh-git -ErrorAction SilentlyContinue
+
+# ----------------------------
+# DOCKER Autocompletion
+# ----------------------------
+Import-Module DockerCompletion -ErrorAction SilentlyContinue
+
+# ----------------------------
+# DOCKER CLEAN COMMAND
+# ----------------------------
+function docker-clean {
+    param(
+        [Alias("a")]
+        [switch]$All,
+
+        [Alias("f")]
+        [switch]$Force,
+
+        [Alias("h")]
+        [switch]$Help
+    )
+
+    $rawArgs = $args
+    $allowedFlags = @('-a', '--all', '-f', '--force', '-h', '--help')
+    foreach ($arg in $rawArgs) {
+        if ($allowedFlags -notcontains $arg) {
+            Write-Error "Unknown option '$arg'. Use --help for usage information."
+            return
+        }
+    }
+
+    if ($Help -or ($rawArgs -contains '--help')) {
+@'
+Usage: docker-clean [OPTIONS]
+
+Removes stopped docker containers.
+
+Options:
+  -a, --all       Also prune images, volumes, networks (dangerous!)
+  -f, --force     Skip confirmation prompts
+  -h, --help      Show this help message and exit
+'@
+        return
+    }
+
+    if ($rawArgs -contains '--all') { $All = $true }
+    if ($rawArgs -contains '--force') { $Force = $true }
+
+    $containers = docker ps -aq
+    if ($containers) {
+        Write-Host "Containers to remove: $($containers.Count)"
+        if (-not $Force) {
+            $confirm = Read-Host "Proceed with container removal? (y/N)"
+            if ($confirm -ne 'y' -and $confirm -ne 'Y') { return }
+        }
+        docker rm -vf $containers | Out-Null
+        Write-Host "Containers removed."
+    } else {
+        Write-Host "No containers to remove."
+    }
+
+    if ($All) {
+        Write-Host "! This will prune unused images, volumes, and networks. !"
+        Write-Host "! This may remove Kubernetes system images and cached layers. !"
+        if (-not $Force) {
+            $confirm = Read-Host "Are you sure you want to continue? (y/N)"
+            if ($confirm -ne 'y' -and $confirm -ne 'Y') {
+                Write-Host "Prune Aborted."
+                return
+            }
+        }
+
+        docker image prune -af
+        docker volume prune -f
+        docker network prune -f
+        Write-Host "Full cleanup complete."
+    }
+}
+
+# ----------------------------
+# History Completion
+# ----------------------------
+
+# Reset powershell history used for autocompletion to erase all executed commands:
+# Remove-Item (Get-PSReadLineOption).HistorySavePath -Force
+
+Set-PSReadLineOption -EditMode Windows
+Set-PSReadLineOption -PredictionSource History
+Set-PSReadLineOption -PredictionViewStyle InlineView
+
+# Make Tab accept predictive suggestion instead of completing paths
+Set-PSReadLineKeyHandler -Key Tab -Function AcceptSuggestion
+
+# Optional: accept one word at a time with Ctrl+RightArrow
+Set-PSReadLineKeyHandler -Key Ctrl+RightArrow -Function AcceptNextSuggestionWord
+
+# Optional: keep a way to do normal completion
+Set-PSReadLineKeyHandler -Key Ctrl+Spacebar -Function Complete
+Set-PSReadLineKeyHandler -Key Shift+Tab -Function MenuComplete
