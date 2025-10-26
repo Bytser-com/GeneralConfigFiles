@@ -1,0 +1,2228 @@
+/* Configure firewall rules and zones */
+firewall {
+    /* Configure all sorts of groups to make configuring and management easier */
+    group {
+        address-group BOGONSv4 {
+            address "0.0.0.0-0.255.255.255"
+            address "10.0.0.0-10.255.255.255"
+            address "100.64.0.0-100.127.255.255"
+            address "127.0.0.0-127.255.255.255"
+            address "169.254.0.0-169.254.255.255"
+            address "172.16.0.0-172.31.255.255"
+            address "192.0.2.0-192.0.2.255"
+            address "192.168.0.0-192.168.255.255"
+            address "198.18.0.0-198.19.255.255"
+            address "192.0.0.0-192.0.0.254"
+            address "127.0.53.53"
+            address "198.51.100.0-198.51.100.255"
+            address "203.0.113.0-203.0.113.255"
+            address "224.0.0.0-239.255.255.255"
+            address "240.0.0.0-255.255.255.255"
+            address "255.255.255.255"
+            description "BOGON ipv4 networks"
+        }
+        address-group Blocked_IPsv4 {
+            description "Blocked public ipv4 addresses"
+            include "BOGONSv4"
+        }
+        address-group IoT_Internet {
+            address "192.168.3.5-192.168.3.25"
+            description "Range of IoT devices which have internet access"
+        }
+        address-group Reverse_Proxies {
+            address "10.145.0.10"
+            address "10.145.0.11"
+            address "10.145.0.12"
+            description "Bytser Reverse Proxies which handle all incoming traffic"
+        }
+        interface-group WAN_Interfaces {
+            description "WAN interfaces which are load-balanced"
+            interface "eth8"
+            interface "eth6"
+            interface "eth3"
+        }
+        ipv6-address-group BOGONSv6 {
+            address "::"
+            address "::1"
+            address "::ffff:0:0-::ffff:ffff:ffff"
+            address "::-0000:0000:0000:0000:0000:0000:ffff:ffff"
+            address "100::-100::ffff:ffff:ffff:ffff"
+            address "2001:10::-2001:1f:ffff:ffff:ffff:ffff:ffff:ffff"
+            address "2001:db8::-2001:db8:ffff:ffff:ffff:ffff:ffff:ffff"
+            address "3fff::-3fff:fff:ffff:ffff:ffff:ffff:ffff:ffff"
+            address "fc00::-fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"
+            address "fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff"
+            address "fec0::-feff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"
+            address "ff00::-ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"
+            description "Bogon ipv6 Networks"
+        }
+        ipv6-address-group Blocked_IPsv6 {
+            description "Blocked public ipv6 addresses"
+            include "BOGONSv6"
+        }
+        port-group Allowed_WAN_Ports {
+            description "Ports which get redirected to the Reverse_Proxies"
+            port "80"
+            port "443"
+        }
+    }
+    /* Configure all firewall rules */
+    ipv4 {
+        name CLIENT_ISOLATION_V4 {
+            default-action "drop"
+            description "Prevent IPv4 clients from seeing/accesing each other"
+        }
+        name DEFAULT_TO_LOCAL_V4 {
+            default-action "drop"
+            rule 10 {
+                action "accept"
+                description "Allow established/related sessions"
+                state "established"
+                state "related"
+            }
+            rule 20 {
+                action "accept"
+                description "Allow ICMP to Router"
+                destination {
+                    address "192.168.1.1"
+                }
+                protocol "icmp"
+            }
+            rule 30 {
+                action "accept"
+                description "Allow IPv4 DNS requests to Router"
+                destination {
+                    address "192.168.1.1"
+                    port "53"
+                }
+                protocol "udp"
+            }
+            rule 40 {
+                action "accept"
+                description "Allow DHCP"
+                destination {
+                    address "192.168.1.1"
+                    port "67"
+                }
+                protocol "udp"
+            }
+            rule 50 {
+                action "accept"
+                description "Allow NTP"
+                destination {
+                    address "192.168.1.1"
+                    port "123"
+                }
+                protocol "udp"
+            }
+        }
+        name GUESTS_TO_LOCAL_V4 {
+            default-action "drop"
+            rule 10 {
+                action "accept"
+                description "Allow established/related sessions"
+                state "established"
+                state "related"
+            }
+            rule 20 {
+                action "accept"
+                description "Allow ICMP to Router"
+                destination {
+                    address "192.168.66.1"
+                }
+                protocol "icmp"
+            }
+            rule 30 {
+                action "accept"
+                description "Allow IPv4 DNS requests to Router"
+                destination {
+                    address "192.168.66.1"
+                    port "53"
+                }
+                protocol "udp"
+            }
+            rule 40 {
+                action "accept"
+                description "Allow DHCP"
+                destination {
+                    address "192.168.66.1"
+                    port "67"
+                }
+                protocol "udp"
+            }
+            rule 50 {
+                action "accept"
+                description "Allow NTP"
+                destination {
+                    address "192.168.66.1"
+                    port "123"
+                }
+                protocol "udp"
+            }
+        }
+        name HOME_TO_LOCAL_V4 {
+            default-action "drop"
+            rule 10 {
+                action "accept"
+                description "Allow established/related sessions"
+                state "established"
+                state "related"
+            }
+            rule 20 {
+                action "accept"
+                description "Allow ICMP to Router"
+                destination {
+                    address "192.168.13.1"
+                }
+                protocol "icmp"
+            }
+            rule 30 {
+                action "accept"
+                description "Allow IPv4 DNS requests to Router"
+                destination {
+                    address "192.168.13.1"
+                    port "53"
+                }
+                protocol "udp"
+            }
+            rule 40 {
+                action "accept"
+                description "Allow DHCP"
+                destination {
+                    address "192.168.13.1"
+                    port "67"
+                }
+                protocol "udp"
+            }
+            rule 50 {
+                action "accept"
+                description "Allow NTP"
+                destination {
+                    address "192.168.13.1"
+                    port "123"
+                }
+                protocol "udp"
+            }
+        }
+        name INTER_VLAN_DESTINATION_V4 {
+            default-action "drop"
+            description "Allow responses back to the originating vlan (IPv4)"
+            rule 10 {
+                action "accept"
+                description "Allow established/related sessions"
+                state "established"
+                state "related"
+            }
+        }
+        name INTER_VLAN_HOME_TO_IOT_V4 {
+            default-action "drop"
+            description "Allow IPv4 Home clients access to IoT clients"
+            rule 10 {
+                action "accept"
+                description "Allow established/related sessions"
+                state "established"
+                state "related"
+            }
+            rule 20 {
+                action "accept"
+                description "Allow ICMP"
+                protocol "icmp"
+            }
+            rule 30 {
+                action "accept"
+                description "Allow HTTP(s)"
+                destination {
+                    port "80,443"
+                }
+                protocol "tcp"
+            }
+            rule 40 {
+                action "accept"
+                description "Allow mDNS"
+                destination {
+                    port "5353"
+                }
+                protocol "udp"
+            }
+        }
+        name INTER_VLAN_NETNGNRS_TO_MNGMT_V4 {
+            default-action "drop"
+            description "Allow IPv4 NETNGNRS clients access to MNGMT clients"
+            rule 10 {
+                action "accept"
+                description "Allow established/related sessions"
+                state "established"
+                state "related"
+            }
+            rule 20 {
+                action "accept"
+                description "Allow ICMP"
+                protocol "icmp"
+            }
+            rule 30 {
+                action "accept"
+                description "Allow HTTP(s)"
+                destination {
+                    port "80,443"
+                }
+                protocol "tcp"
+            }
+            rule 40 {
+                action "accept"
+                description "Allow SSH"
+                destination {
+                    port "22"
+                }
+                protocol "tcp"
+            }
+        }
+        name INTER_VLAN_NETNGNRS_TO_PROD_V4 {
+            default-action "drop"
+            description "Allow IPv4 NETNGNRS clients access to PROD clients"
+            rule 10 {
+                action "accept"
+                description "Allow established/related sessions"
+                state "established"
+                state "related"
+            }
+            rule 20 {
+                action "accept"
+                description "Allow ICMP"
+                protocol "icmp"
+            }
+            rule 30 {
+                action "accept"
+                description "Allow HTTP(s)"
+                destination {
+                    port "80,443"
+                }
+                protocol "tcp"
+            }
+            rule 40 {
+                action "accept"
+                description "Allow SSH"
+                destination {
+                    port "22"
+                }
+                protocol "tcp"
+            }
+        }
+        name INTRA_VLAN_V4 {
+            default-action "drop"
+            description "Allow access to IPv4 clients in the same vlan"
+            rule 10 {
+                action "accept"
+                description "Allow established/related sessions"
+                state "established"
+                state "related"
+            }
+            rule 20 {
+                action "accept"
+                description "Allow ICMP"
+                protocol "icmp"
+            }
+            rule 30 {
+                action "accept"
+                description "Allow HTTP(s)"
+                destination {
+                    port "80,443"
+                }
+                protocol "tcp"
+            }
+        }
+        name IOT_TO_LOCAL_V4 {
+            default-action "drop"
+            rule 10 {
+                action "accept"
+                description "Allow established/related sessions"
+                state "established"
+                state "related"
+            }
+            rule 20 {
+                action "accept"
+                description "Allow ICMP to Router"
+                destination {
+                    address "192.168.3.1"
+                }
+                protocol "icmp"
+            }
+            rule 30 {
+                action "accept"
+                description "Allow IPv4 DNS requests to Router"
+                destination {
+                    address "192.168.3.1"
+                    port "53"
+                }
+                protocol "udp"
+            }
+            rule 40 {
+                action "accept"
+                description "Allow DHCP"
+                destination {
+                    address "192.168.3.1"
+                    port "67"
+                }
+                protocol "udp"
+            }
+            rule 50 {
+                action "accept"
+                description "Allow NTP"
+                destination {
+                    address "192.168.3.1"
+                    port "123"
+                }
+                protocol "udp"
+            }
+        }
+        name LAN_TO_WAN_V4 {
+            default-action "reject"
+            rule 10 {
+                action "accept"
+                source {
+                    address "192.168.13.0/24"
+                }
+            }
+            rule 11 {
+                action "accept"
+                source {
+                    address "192.168.66.0/24"
+                }
+            }
+            rule 12 {
+                action "accept"
+                source {
+                    address "10.145.0.0/24"
+                }
+            }
+            rule 13 {
+                action "accept"
+                source {
+                    address "10.222.0.0/24"
+                }
+            }
+            rule 14 {
+                action "accept"
+                source {
+                    address "10.248.0.0/24"
+                }
+            }
+            rule 15 {
+                action "accept"
+                description "Allow IoT clients in IoT_Internet range access to internet"
+                source {
+                    group {
+                        address-group "IoT_Internet"
+                    }
+                }
+            }
+        }
+        name LOCAL_TO_LAN_V4 {
+            default-action "drop"
+            description "Only allow active sessions originating from the Router"
+            rule 10 {
+                action "accept"
+                description "Allow established and related"
+                state "established"
+                state "related"
+            }
+            rule 20 {
+                action "accept"
+                description "Allow IPv4 traffic from Router to Reverse_Proxies (Healthchecks)"
+                destination {
+                    group {
+                        address-group "Reverse_Proxies"
+                    }
+                    port "8080"
+                }
+                protocol "tcp"
+            }
+        }
+        name LOCAL_TO_WAN_V4 {
+            default-action "drop"
+            description "Allow Router IPv4 internet access for NAT,DNS,NTP"
+            rule 10 {
+                action "drop"
+                description "Block outgoing IPv4 traffic to Blocked_IPsv4"
+                destination {
+                    group {
+                        address-group "Blocked_IPsv4"
+                    }
+                }
+            }
+            rule 20 {
+                action "accept"
+                description "Allow established/related sessions"
+                state "established"
+                state "related"
+            }
+            rule 30 {
+                action "accept"
+                description "Allow outgoing IPv4 DNS queries"
+                destination {
+                    port "53"
+                }
+                protocol "udp,tcp"
+            }
+            rule 31 {
+                action "accept"
+                description "Allow outgoing IPv4 NTP synchronization"
+                destination {
+                    port "123"
+                }
+                protocol "udp"
+            }
+            rule 32 {
+                action "accept"
+                description "Allow outgoing IPv4 HTTP(s)"
+                destination {
+                    port "80,443"
+                }
+                protocol "udp,tcp"
+            }
+        }
+        name MNGMT_TO_LOCAL_V4 {
+            default-action "drop"
+            rule 10 {
+                action "accept"
+                description "Allow established/related sessions"
+                state "established"
+                state "related"
+            }
+            rule 20 {
+                action "accept"
+                description "Allow ICMP to Router"
+                destination {
+                    address "10.222.0.3"
+                }
+                protocol "icmp"
+            }
+            rule 30 {
+                action "accept"
+                description "Allow IPv4 DNS requests to Router"
+                destination {
+                    address "10.222.0.3"
+                    port "53"
+                }
+                protocol "udp"
+            }
+            rule 40 {
+                action "accept"
+                description "Allow DHCP"
+                destination {
+                    address "10.222.0.3"
+                    port "67"
+                }
+                protocol "udp"
+            }
+            rule 50 {
+                action "accept"
+                description "Allow NTP"
+                destination {
+                    address "10.222.0.3"
+                    port "123"
+                }
+                protocol "udp"
+            }
+            rule 60 {
+                action "accept"
+                description "Allow SSH"
+                destination {
+                    address "10.222.0.3"
+                    port "22"
+                }
+                protocol "tcp"
+            }
+        }
+        name NETNGNRS_TO_LOCAL_V4 {
+            default-action "drop"
+            rule 10 {
+                action "accept"
+                description "Allow established/related sessions"
+                state "established"
+                state "related"
+            }
+            rule 20 {
+                action "accept"
+                description "Allow ICMP to NETNGNRS Router"
+                destination {
+                    address "10.248.0.4"
+                }
+                protocol "icmp"
+            }
+            rule 30 {
+                action "accept"
+                description "Allow IPv4 DNS requests to Router"
+                destination {
+                    address "10.248.0.4"
+                    port "53"
+                }
+                protocol "udp"
+            }
+            rule 40 {
+                action "accept"
+                description "Allow DHCP"
+                destination {
+                    address "10.248.0.4"
+                    port "67"
+                }
+                protocol "udp"
+            }
+            rule 50 {
+                action "accept"
+                description "Allow NTP"
+                destination {
+                    address "10.248.0.4"
+                    port "123"
+                }
+                protocol "udp"
+            }
+            rule 60 {
+                action "accept"
+                description "Allow ICMP to MNGMT Router"
+                destination {
+                    address "10.222.0.3"
+                }
+                protocol "icmp"
+            }
+            rule 70 {
+                action "accept"
+                description "Allow SSH to MNGMT Router"
+                destination {
+                    address "10.222.0.3"
+                    port "22"
+                }
+                protocol "tcp"
+            }
+        }
+        name PROD_TO_LOCAL_V4 {
+            default-action "drop"
+            rule 10 {
+                action "accept"
+                description "Allow established/related sessions"
+                state "established"
+                state "related"
+            }
+            rule 20 {
+                action "accept"
+                description "Allow ICMP to Router"
+                destination {
+                    address "10.145.0.2"
+                }
+                protocol "icmp"
+            }
+            rule 30 {
+                action "accept"
+                description "Allow IPv4 DNS requests to Router"
+                destination {
+                    address "10.145.0.2"
+                    port "53"
+                }
+                protocol "udp"
+            }
+            rule 40 {
+                action "accept"
+                description "Allow DHCP"
+                destination {
+                    address "10.145.0.2"
+                    port "67"
+                }
+                protocol "udp"
+            }
+            rule 50 {
+                action "accept"
+                description "Allow NTP"
+                destination {
+                    address "10.145.0.2"
+                    port "123"
+                }
+                protocol "udp"
+            }
+        }
+        name WAN_TO_LAN_V4 {
+            default-action "drop"
+            rule 10 {
+                action "drop"
+                description "Drop packets from Blocked_IPsv4"
+                log
+                log-options {
+                    level "notice"
+                }
+                source {
+                    group {
+                        address-group "Blocked_IPsv4"
+                    }
+                }
+            }
+            rule 20 {
+                action "accept"
+                state "established"
+                state "related"
+            }
+        }
+        name WAN_TO_LOCAL_V4 {
+            default-action "drop"
+            description "Regulate incoming IPv4 traffic from the internet "
+            log
+            log-options {
+                level "notice"
+            }
+            rule 10 {
+                action "drop"
+                description "Drop packets from Blocked_IPsv4"
+                log
+                log-options {
+                    level "notice"
+                }
+                source {
+                    group {
+                        address-group "Blocked_IPsv4"
+                    }
+                }
+            }
+            rule 11 {
+                action "accept"
+                description "Allow regulated IPv4 pings from WAN"
+                limit {
+                    burst "75"
+                    rate "50/second"
+                }
+                protocol "icmp"
+            }
+            rule 12 {
+                action "drop"
+                description "Drop excessive new IPv4 TCP sessions"
+                limit {
+                    burst "75"
+                    rate "50/second"
+                }
+                log
+                log-options {
+                    level "notice"
+                }
+                protocol "tcp"
+                state "new"
+                tcp {
+                    flags {
+                        syn
+                    }
+                }
+            }
+            rule 13 {
+                action "accept"
+                description "Allow regulated IPv4 DNS queries from WAN"
+                destination {
+                    port "53"
+                }
+                limit {
+                    burst "75"
+                    rate "50/second"
+                }
+                protocol "udp"
+            }
+            rule 14 {
+                action "drop"
+                description "Drop excessive generic IPv4 UDP packets"
+                limit {
+                    burst "750"
+                    rate "500/second"
+                }
+                log
+                log-options {
+                    level "notice"
+                }
+                protocol "udp"
+            }
+            rule 20 {
+                action "accept"
+                state "established"
+                state "related"
+            }
+            rule 30 {
+                action "accept"
+                description "Allow IPv4 traffic to main_proxies"
+                destination {
+                    group {
+                        port-group "Allowed_WAN_Ports"
+                    }
+                }
+                limit {
+                    burst "75"
+                    rate "50/second"
+                }
+                protocol "udp,tcp"
+            }
+        }
+    }
+    ipv6 {
+        name allow_everything {
+            default-action "accept"
+            description "yeah"
+            rule 10 {
+                action "accept"
+                destination {
+                    port "1"
+                }
+                protocol "tcp"
+            }
+        }
+    }
+    /* Create firewall zones to set firewall rules to, we create a zone for each vlan & LAN,WAN,LOCAL */
+    zone DEFAULT {
+        default-action "drop"
+        description "VLAN2 Default"
+        from DEFAULT {
+            firewall {
+                name "CLIENT_ISOLATION"
+            }
+        }
+        from LOCAL {
+            firewall {
+                name "LOCAL_TO_LAN"
+            }
+        }
+        from WAN {
+            firewall {
+                name "WAN_TO_LAN"
+            }
+        }
+        member {
+            interface "br1.2"
+        }
+    }
+    zone GUESTS {
+        default-action "drop"
+        description "VLAN66 Guests"
+        from GUESTS {
+            firewall {
+                name "CLIENT_ISOLATION"
+            }
+        }
+        from LOCAL {
+            firewall {
+                name "LOCAL_TO_LAN"
+            }
+        }
+        from WAN {
+            firewall {
+                name "WAN_TO_LAN"
+            }
+        }
+        member {
+            interface "br1.66"
+        }
+    }
+    zone HOME {
+        default-action "drop"
+        description "VLAN13 Home"
+        from HOME {
+            firewall {
+                name "INTRA_VLAN"
+            }
+        }
+        from IOT {
+            firewall {
+                name "INTER_VLAN_DESTINATION"
+            }
+        }
+        from LOCAL {
+            firewall {
+                name "LOCAL_TO_LAN"
+            }
+        }
+        from WAN {
+            firewall {
+                name "WAN_TO_LAN"
+            }
+        }
+        member {
+            interface "br1.13"
+        }
+    }
+    zone IOT {
+        default-action "drop"
+        description "VLAN3 IoT"
+        from HOME {
+            firewall {
+                name "INTER_VLAN_HOME_TO_IOT"
+            }
+        }
+        from IOT {
+            firewall {
+                name "INTRA_VLAN"
+            }
+        }
+        from LOCAL {
+            firewall {
+                name "LOCAL_TO_LAN"
+            }
+        }
+        from WAN {
+            firewall {
+                name "WAN_TO_LAN"
+            }
+        }
+        member {
+            interface "br1.3"
+        }
+    }
+    zone LAN {
+        default-action "drop"
+        description "Lost traffic from the bridge"
+        member {
+            interface "br1"
+        }
+    }
+    zone LOCAL {
+        default-action "drop"
+        description "The Router itself"
+        from DEFAULT {
+            firewall {
+                name "DEFAULT_TO_LOCAL"
+            }
+        }
+        from GUESTS {
+            firewall {
+                name "GUESTS_TO_LOCAL"
+            }
+        }
+        from HOME {
+            firewall {
+                name "HOME_TO_LOCAL"
+            }
+        }
+        from IOT {
+            firewall {
+                name "IOT_TO_LOCAL"
+            }
+        }
+        from MNGMT {
+            firewall {
+                name "MNGMT_TO_LOCAL"
+            }
+        }
+        from NETNGNRS {
+            firewall {
+                name "NETNGNRS_TO_LOCAL"
+            }
+        }
+        from PROD {
+            firewall {
+                name "PROD_TO_LOCAL"
+            }
+        }
+        from WAN {
+            firewall {
+                ipv6-name "allow_everything"
+                name "WAN_TO_LOCAL"
+            }
+        }
+        local-zone
+    }
+    zone MNGMT {
+        default-action "drop"
+        description "VLAN222 Bytser Management Net"
+        from LOCAL {
+            firewall {
+                name "LOCAL_TO_LAN"
+            }
+        }
+        from MNGMT {
+            firewall {
+                name "INTRA_VLAN"
+            }
+        }
+        from NETNGNRS {
+            firewall {
+                name "INTER_VLAN_NETNGNRS_TO_MNGMT"
+            }
+        }
+        from WAN {
+            firewall {
+                name "WAN_TO_LAN"
+            }
+        }
+        member {
+            interface "br1.222"
+        }
+    }
+    zone NETNGNRS {
+        default-action "drop"
+        description "VLAN248 Bytser Net Engineers"
+        from LOCAL {
+            firewall {
+                name "LOCAL_TO_LAN"
+            }
+        }
+        from MNGMT {
+            firewall {
+                name "INTER_VLAN_DESTINATION"
+            }
+        }
+        from NETNGNRS {
+            firewall {
+                name "INTRA_VLAN"
+            }
+        }
+        from PROD {
+            firewall {
+                name "INTER_VLAN_DESTINATION"
+            }
+        }
+        from WAN {
+            firewall {
+                name "WAN_TO_LAN"
+            }
+        }
+        member {
+            interface "br1.248"
+        }
+    }
+    zone PROD {
+        default-action "drop"
+        description "VLAN145 Bytser Prod"
+        from LOCAL {
+            firewall {
+                name "LOCAL_TO_LAN"
+            }
+        }
+        from NETNGNRS {
+            firewall {
+                name "INTER_VLAN_NETNGNRS_TO_PROD"
+            }
+        }
+        from PROD {
+            firewall {
+                name "INTRA_VLAN"
+            }
+        }
+        from WAN {
+            firewall {
+                name "WAN_TO_LAN"
+            }
+        }
+        member {
+            interface "br1.145"
+        }
+    }
+    zone WAN {
+        default-action "drop"
+        description "The internet / outside the site"
+        from DEFAULT {
+            firewall {
+                name "LAN_TO_WAN"
+            }
+        }
+        from GUESTS {
+            firewall {
+                name "LAN_TO_WAN"
+            }
+        }
+        from HOME {
+            firewall {
+                name "LAN_TO_WAN"
+            }
+        }
+        from IOT {
+            firewall {
+                name "LAN_TO_WAN"
+            }
+        }
+        from LAN {
+            firewall {
+                name "LAN_TO_WAN"
+            }
+        }
+        from LOCAL {
+            firewall {
+                name "LOCAL_TO_WAN"
+            }
+        }
+        from MNGMT {
+            firewall {
+                name "LAN_TO_WAN"
+            }
+        }
+        from NETNGNRS {
+            firewall {
+                name "LAN_TO_WAN"
+            }
+        }
+        from PROD {
+            firewall {
+                name "LAN_TO_WAN"
+            }
+        }
+        member {
+            interface "eth3"
+            interface "eth6"
+            interface "eth8"
+        }
+    }
+}
+/* Configure all available interfaces */
+interfaces {
+    /* This bridge handles the vlan traffic which makes it so we can untag/tag specific ports, without bridge only trunk ports */
+    bridge br1 {
+        description "Internal Managed Switch"
+        enable-vlan
+        member {
+            interface eth0 {
+                allowed-vlan "3"
+                allowed-vlan "13"
+                allowed-vlan "66"
+                allowed-vlan "145"
+                allowed-vlan "222"
+                allowed-vlan "248"
+                native-vlan "2"
+            }
+            interface eth1 {
+                allowed-vlan "3"
+                allowed-vlan "13"
+                allowed-vlan "66"
+                allowed-vlan "222"
+                allowed-vlan "248"
+                native-vlan "2"
+            }
+            interface eth2 {
+                allowed-vlan "222"
+                native-vlan "2"
+            }
+            interface eth4 {
+                allowed-vlan "3"
+                allowed-vlan "145"
+                allowed-vlan "222"
+                native-vlan "2"
+            }
+            interface eth5 {
+                allowed-vlan "145"
+                native-vlan "2"
+            }
+            interface eth7 {
+                allowed-vlan "145"
+                native-vlan "2"
+            }
+        }
+        protocol "802.1q"
+        stp
+        /* Create all vlans */
+        vif 2 {
+            address "192.168.1.1/24"
+            address "fd00:4274:7372:2::1/64"
+            description "Default"
+            egress-qos "0"
+            ingress-qos "0"
+        }
+        vif 3 {
+            address "192.168.3.1/24"
+            address "fd00:4274:7372:3::1/64"
+            description "IoT"
+            egress-qos "2"
+            ingress-qos "2"
+        }
+        vif 13 {
+            address "192.168.13.1/24"
+            address "fd00:4274:7372:13::1/64"
+            description "Home"
+            egress-qos "3"
+            ingress-qos "3"
+        }
+        vif 66 {
+            address "192.168.66.1/24"
+            address "fd00:4274:7372:66::1/64"
+            description "Guests"
+            egress-qos "1"
+            ingress-qos "1"
+        }
+        vif 145 {
+            address "10.145.0.2/24"
+            address "fd00:4274:7372:145::1/64"
+            description "Bytser Prod"
+            egress-qos "5"
+            ingress-qos "5"
+        }
+        vif 222 {
+            address "10.222.0.3/24"
+            address "fd00:4274:7372:222::1/64"
+            description "Bytser Management Net"
+            egress-qos "6"
+            ingress-qos "6"
+        }
+        vif 248 {
+            address "10.248.0.4/24"
+            address "fd00:4274:7372:248::1/64"
+            description "Bytser Net Engineers"
+            egress-qos "4"
+            ingress-qos "4"
+        }
+    }
+    ethernet eth0 {
+        description "LAN03 - Config Port / Rack-PC"
+        hw-id "28:80:23:b4:a0:c8"
+        offload {
+            gro
+            gso
+            sg
+            tso
+        }
+    }
+    ethernet eth1 {
+        description "LAN04 - Home & Devices Switch"
+        hw-id "28:80:23:b4:a0:c9"
+        offload {
+            gro
+            gso
+            sg
+            tso
+        }
+    }
+    ethernet eth2 {
+        description "LAN05 - Rack Management Switch"
+        hw-id "28:80:23:b4:a0:ca"
+        offload {
+            gro
+            gso
+            sg
+            tso
+        }
+    }
+    ethernet eth3 {
+        address "dhcp"
+        address "dhcpv6"
+        description "WAN03"
+        dhcpv6-options {
+            no-release
+            pd 0 {
+                interface br1.2 {
+                    sla-id "2"
+                }
+                interface br1.3 {
+                    sla-id "3"
+                }
+                interface br1.13 {
+                    sla-id "13"
+                }
+                interface br1.66 {
+                    sla-id "66"
+                }
+                interface br1.145 {
+                    sla-id "145"
+                }
+                interface br1.222 {
+                    sla-id "222"
+                }
+                interface br1.248 {
+                    sla-id "248"
+                }
+            }
+        }
+        hw-id "28:80:23:b4:a0:cb"
+        ipv6 {
+            address {
+                autoconf
+            }
+        }
+        offload {
+            gro
+            gso
+            sg
+            tso
+        }
+    }
+    ethernet eth4 {
+        description "LAN00 - Main Server Internal Network"
+        hw-id "bc:24:11:52:ca:0b"
+        offload {
+            gro
+            gso
+            sg
+            tso
+        }
+    }
+    ethernet eth5 {
+        description "LAN02 - Redundant Switch"
+        hw-id "48:df:37:16:2e:c8"
+        offload {
+            gro
+            gso
+            sg
+            tso
+        }
+    }
+    ethernet eth6 {
+        address "dhcp"
+        address "dhcpv6"
+        description "WAN02"
+        dhcpv6-options {
+            no-release
+            pd 0 {
+                interface br1.2 {
+                    sla-id "2"
+                }
+                interface br1.3 {
+                    sla-id "3"
+                }
+                interface br1.13 {
+                    sla-id "13"
+                }
+                interface br1.66 {
+                    sla-id "66"
+                }
+                interface br1.145 {
+                    sla-id "145"
+                }
+                interface br1.222 {
+                    sla-id "222"
+                }
+                interface br1.248 {
+                    sla-id "248"
+                }
+            }
+        }
+        hw-id "48:df:37:16:2e:c9"
+        ipv6 {
+            address {
+                autoconf
+            }
+        }
+        offload {
+            gro
+            gso
+            sg
+            tso
+        }
+    }
+    ethernet eth7 {
+        description "LAN01 - Main Switch"
+        hw-id "48:df:37:16:2d:d8"
+        offload {
+            gro
+            gso
+            sg
+            tso
+        }
+    }
+    ethernet eth8 {
+        address "dhcp"
+        address "dhcpv6"
+        description "WAN01"
+        dhcpv6-options {
+            no-release
+            pd 0 {
+                interface br1.2 {
+                    sla-id "2"
+                }
+                interface br1.3 {
+                    sla-id "3"
+                }
+                interface br1.13 {
+                    sla-id "13"
+                }
+                interface br1.66 {
+                    sla-id "66"
+                }
+                interface br1.145 {
+                    sla-id "145"
+                }
+                interface br1.222 {
+                    sla-id "222"
+                }
+                interface br1.248 {
+                    sla-id "248"
+                }
+            }
+        }
+        hw-id "48:df:37:16:2d:d9"
+        ipv6 {
+            address {
+                autoconf
+            }
+        }
+        offload {
+            gro
+            gso
+            sg
+            tso
+        }
+    }
+    loopback lo {
+    }
+}
+load-balancing {
+    haproxy {
+        backend main_proxies {
+            balance "least-connection"
+            description "Loadbalancing & Redundancy accross proxy servers"
+            mode "tcp"
+            server proxy1 {
+                address "10.145.0.10"
+                check
+                port "8080"
+                send-proxy-v2
+            }
+            server proxy2 {
+                address "10.145.0.11"
+                check
+                port "8080"
+                send-proxy-v2
+            }
+            server proxy3 {
+                address "10.145.0.12"
+                backup
+                check
+                port "8080"
+                send-proxy-v2
+            }
+        }
+        service HTTPS_PROXY {
+            backend "main_proxies"
+            description "Redirect Router https requests to proxy"
+            listen-address 0.0.0.0 {
+            }
+            mode "tcp"
+            port "443"
+        }
+        service HTTP_PROXY {
+            backend "main_proxies"
+            description "Redirect Router http requests to proxy"
+            listen-address 0.0.0.0 {
+            }
+            mode "tcp"
+            port "80"
+        }
+    }
+    /* Load-Balance the WAN ports for network distribution & redudancy */
+    wan {
+        flush-connections
+        interface-health eth3 {
+            failure-count "3"
+            nexthop "dhcp"
+            success-count "1"
+            test 1 {
+                target "1.1.1.1"
+                type "ping"
+            }
+            test 2 {
+                target "1.0.0.1"
+                type "ping"
+            }
+            test 3 {
+                target "8.8.8.8"
+                type "ping"
+            }
+        }
+        interface-health eth6 {
+            failure-count "3"
+            nexthop "dhcp"
+            success-count "1"
+            test 1 {
+                target "1.1.1.1"
+                type "ping"
+            }
+            test 2 {
+                target "1.0.0.1"
+                type "ping"
+            }
+            test 3 {
+                target "8.8.8.8"
+                type "ping"
+            }
+        }
+        interface-health eth8 {
+            failure-count "3"
+            nexthop "dhcp"
+            success-count "1"
+            test 1 {
+                target "1.1.1.1"
+                type "ping"
+            }
+            test 2 {
+                target "1.0.0.1"
+                type "ping"
+            }
+            test 3 {
+                target "8.8.8.8"
+                type "ping"
+            }
+        }
+        rule 1 {
+            description "WAN Loadbalancer & Failover"
+            failover
+            inbound-interface "br1"
+            interface eth3 {
+                weight "1"
+            }
+            interface eth6 {
+                weight "100"
+            }
+            interface eth8 {
+                weight "100"
+            }
+        }
+    }
+}
+/* Configure NAT for all vlans & networks */
+nat {
+    /* Configure port forwarding for public services on WAN */
+    destination {
+        rule 10 {
+            /* Deze regel is uitgeschakeld omdat er nog geen DNS server draait, vul het ip adress aan en activeer de regel*/
+            description "Allow public UDP DNS requests to DNS server"
+            destination {
+                port "53"
+            }
+            disable
+            inbound-interface {
+                group "WAN_Interfaces"
+            }
+            protocol "udp"
+            source {
+            }
+            translation {
+                address "10.145.0.10"
+                port "53"
+            }
+        }
+        rule 11 {
+            /* Deze regel is uitgeschakeld omdat er nog geen DNS server draait, vul het ip adress aan en activeer de regel*/
+            description "Allow public TCP DNS requests to DNS server"
+            destination {
+                port "53"
+            }
+            disable
+            inbound-interface {
+                group "WAN_Interfaces"
+            }
+            protocol "tcp"
+            source {
+            }
+            translation {
+                address "10.145.0.10"
+                port "53"
+            }
+        }
+    }
+    /* Configure outgoing ipv4 traffic address translation */
+    source {
+        rule 30002 {
+            description "WAN01 VLAN2 NAT"
+            outbound-interface {
+                name "eth3"
+            }
+            source {
+                address "192.168.1.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 30003 {
+            description "WAN01 VLAN3 NAT"
+            outbound-interface {
+                name "eth3"
+            }
+            source {
+                address "192.168.3.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 30013 {
+            description "WAN01 VLAN13 NAT"
+            outbound-interface {
+                name "eth3"
+            }
+            source {
+                address "192.168.13.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 30066 {
+            description "WAN01 VLAN66 NAT"
+            outbound-interface {
+                name "eth3"
+            }
+            source {
+                address "192.168.66.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 30145 {
+            description "WAN01 VLAN145 NAT"
+            outbound-interface {
+                name "eth3"
+            }
+            source {
+                address "10.145.0.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 30222 {
+            description "WAN01 VLAN222 NAT"
+            outbound-interface {
+                name "eth3"
+            }
+            source {
+                address "10.222.0.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 30248 {
+            description "WAN01 VLAN248 NAT"
+            outbound-interface {
+                name "eth3"
+            }
+            source {
+                address "10.248.0.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 60002 {
+            description "WAN01 VLAN2 NAT"
+            outbound-interface {
+                name "eth6"
+            }
+            source {
+                address "192.168.1.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 60003 {
+            description "WAN01 VLAN3 NAT"
+            outbound-interface {
+                name "eth6"
+            }
+            source {
+                address "192.168.3.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 60013 {
+            description "WAN01 VLAN13 NAT"
+            outbound-interface {
+                name "eth6"
+            }
+            source {
+                address "192.168.13.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 60066 {
+            description "WAN01 VLAN66 NAT"
+            outbound-interface {
+                name "eth6"
+            }
+            source {
+                address "192.168.66.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 60145 {
+            description "WAN01 VLAN145 NAT"
+            outbound-interface {
+                name "eth6"
+            }
+            source {
+                address "10.145.0.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 60222 {
+            description "WAN01 VLAN222 NAT"
+            outbound-interface {
+                name "eth6"
+            }
+            source {
+                address "10.222.0.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 60248 {
+            description "WAN01 VLAN248 NAT"
+            outbound-interface {
+                name "eth6"
+            }
+            source {
+                address "10.248.0.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 80002 {
+            description "WAN01 VLAN2 NAT"
+            outbound-interface {
+                name "eth8"
+            }
+            source {
+                address "192.168.1.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 80003 {
+            description "WAN01 VLAN3 NAT"
+            outbound-interface {
+                name "eth8"
+            }
+            source {
+                address "192.168.3.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 80013 {
+            description "WAN01 VLAN13 NAT"
+            outbound-interface {
+                name "eth8"
+            }
+            source {
+                address "192.168.13.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 80066 {
+            description "WAN01 VLAN66 NAT"
+            outbound-interface {
+                name "eth8"
+            }
+            source {
+                address "192.168.66.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 80145 {
+            description "WAN01 VLAN145 NAT"
+            outbound-interface {
+                name "eth8"
+            }
+            source {
+                address "10.145.0.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 80222 {
+            description "WAN01 VLAN222 NAT"
+            outbound-interface {
+                name "eth8"
+            }
+            source {
+                address "10.222.0.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+        rule 80248 {
+            description "WAN01 VLAN248 NAT"
+            outbound-interface {
+                name "eth8"
+            }
+            source {
+                address "10.248.0.0/24"
+            }
+            translation {
+                address "masquerade"
+            }
+        }
+    }
+}
+/* Configure needed services */
+service {
+    /* Run a DHCP-server in each vlan on the Router */
+    dhcp-server {
+        shared-network-name VLAN2 {
+            authoritative
+            disable
+            option {
+                default-Router "192.168.1.1"
+                domain-name "bytser-default.lan"
+                name-server "1.1.1.1"
+                name-server "1.0.0.1"
+            }
+            subnet 192.168.1.0/24 {
+                description "bytser-default.lan DHCP"
+                lease "3600"
+                range 0 {
+                    start "192.168.1.5"
+                    stop "192.168.1.250"
+                }
+                subnet-id "2"
+            }
+        }
+        shared-network-name VLAN3 {
+            authoritative
+            option {
+                default-Router "192.168.3.1"
+                domain-name "lucky13-iot.lan"
+                name-server "1.1.1.1"
+                name-server "1.0.0.1"
+            }
+            subnet 192.168.3.0/24 {
+                description "lucky13-iot.lan DHCP"
+                lease "86400"
+                range 0 {
+                    start "192.168.3.200"
+                    stop "192.168.3.250"
+                }
+                subnet-id "3"
+            }
+        }
+        shared-network-name VLAN13 {
+            authoritative
+            option {
+                default-Router "192.168.13.1"
+                domain-name "lucky13-home.lan"
+                name-server "1.1.1.1"
+                name-server "1.0.0.1"
+            }
+            subnet 192.168.13.0/24 {
+                description "lucky13-home.lan DHCP"
+                lease "86400"
+                range 0 {
+                    start "192.168.13.5"
+                    stop "192.168.13.250"
+                }
+                subnet-id "13"
+            }
+        }
+        shared-network-name VLAN66 {
+            authoritative
+            option {
+                default-Router "192.168.66.1"
+                domain-name "bytser-guests.lan"
+                name-server "1.1.1.1"
+                name-server "1.0.0.1"
+            }
+            subnet 192.168.66.0/24 {
+                description "bytser-guests.lan DHCP"
+                lease "28800"
+                range 0 {
+                    start "192.168.66.5"
+                    stop "192.168.66.250"
+                }
+                subnet-id "66"
+            }
+        }
+        shared-network-name VLAN145 {
+            authoritative
+            option {
+                default-Router "10.145.0.2"
+                domain-name "bytser-prod.lan"
+                name-server "1.1.1.1"
+                name-server "1.0.0.1"
+            }
+            subnet 10.145.0.0/24 {
+                description "bytser-prod.lan DHCP"
+                lease "86400"
+                range 0 {
+                    start "10.145.0.235"
+                    stop "10.145.0.250"
+                }
+                subnet-id "145"
+            }
+        }
+        shared-network-name VLAN222 {
+            authoritative
+            option {
+                default-Router "10.222.0.3"
+                domain-name "bytser-management.lan"
+                name-server "1.1.1.1"
+                name-server "1.0.0.1"
+            }
+            subnet 10.222.0.0/24 {
+                description "bytser-management.lan DHCP"
+                lease "86400"
+                range 0 {
+                    start "10.222.0.235"
+                    stop "10.222.0.250"
+                }
+                subnet-id "222"
+            }
+        }
+        shared-network-name VLAN248 {
+            authoritative
+            option {
+                default-Router "10.248.0.4"
+                domain-name "bytser-netengineers.lan"
+                name-server "1.1.1.1"
+                name-server "1.0.0.1"
+            }
+            subnet 10.248.0.0/24 {
+                description "bytser-netengineers.lan DHCP"
+                lease "86400"
+                range 0 {
+                    start "10.248.0.235"
+                    stop "10.248.0.250"
+                }
+                subnet-id "248"
+            }
+        }
+    }
+    dhcpv6-server {
+        global-parameters {
+            name-server "2606:4700:4700::1111"
+            name-server "2606:4700:4700::1001"
+        }
+        shared-network-name VLAN2_DEFAULT {
+            description "DHCPv6 server for DNS-servers & captive-portal"
+            interface "br1.2"
+            subnet fd00:4274:7372:2::/64 {
+                option {
+                    name-server "2606:4700:4700::1111"
+                    name-server "2606:4700:4700::1001"
+                }
+                range 0 {
+                    option {
+                        name-server "2606:4700:4700::1111"
+                        name-server "2606:4700:4700::1001"
+                    }
+                    prefix "fd00:4274:7372:2::/64"
+                    start "fd00:4274:7372:2::100"
+                    stop "fd00:4274:7372:2::1ff"
+                }
+                subnet-id "2"
+            }
+        }
+        shared-network-name VLAN3_IOT {
+            description "DHCPv6 server for DNS-servers & captive-portal"
+            interface "br1.3"
+            subnet fd00:4274:7372:3::/64 {
+                option {
+                    name-server "2606:4700:4700::1111"
+                    name-server "2606:4700:4700::1001"
+                }
+                range 0 {
+                    option {
+                        name-server "2606:4700:4700::1111"
+                        name-server "2606:4700:4700::1001"
+                    }
+                    prefix "fd00:4274:7372:3::/64"
+                    start "fd00:4274:7372:3::100"
+                    stop "fd00:4274:7372:3::1ff"
+                }
+                subnet-id "3"
+            }
+        }
+        shared-network-name VLAN13_HOME {
+            description "DHCPv6 server for DNS-servers & captive-portal"
+            interface "br1.13"
+            subnet fd00:4274:7372:13::/64 {
+                option {
+                    name-server "2606:4700:4700::1111"
+                    name-server "2606:4700:4700::1001"
+                }
+                range 0 {
+                    option {
+                        name-server "2606:4700:4700::1111"
+                        name-server "2606:4700:4700::1001"
+                    }
+                    prefix "fd00:4274:7372:13::/64"
+                    start "fd00:4274:7372:13::100"
+                    stop "fd00:4274:7372:13::1ff"
+                }
+                subnet-id "13"
+            }
+        }
+        shared-network-name VLAN66_GUESTS {
+            description "DHCPv6 server for DNS-servers & captive-portal"
+            interface "br1.66"
+            subnet fd00:4274:7372:66::/64 {
+                option {
+                    name-server "2606:4700:4700::1111"
+                    name-server "2606:4700:4700::1001"
+                }
+                range 0 {
+                    option {
+                        name-server "2606:4700:4700::1111"
+                        name-server "2606:4700:4700::1001"
+                    }
+                    prefix "fd00:4274:7372:66::/64"
+                    start "fd00:4274:7372:66::100"
+                    stop "fd00:4274:7372:66::1ff"
+                }
+                subnet-id "66"
+            }
+        }
+        shared-network-name VLAN145_PROD {
+            description "DHCPv6 server for DNS-servers & captive-portal"
+            interface "br1.145"
+            subnet fd00:4274:7372:145::/64 {
+                option {
+                    name-server "2606:4700:4700::1111"
+                    name-server "2606:4700:4700::1001"
+                }
+                range 0 {
+                    option {
+                        name-server "2606:4700:4700::1111"
+                        name-server "2606:4700:4700::1001"
+                    }
+                    prefix "fd00:4274:7372:145::/64"
+                    start "fd00:4274:7372:145::100"
+                    stop "fd00:4274:7372:145::1ff"
+                }
+                subnet-id "145"
+            }
+        }
+        shared-network-name VLAN222_MNGMT {
+            description "DHCPv6 server for DNS-servers & captive-portal"
+            interface "br1.222"
+            subnet fd00:4274:7372:222::/64 {
+                option {
+                    name-server "2606:4700:4700::1111"
+                    name-server "2606:4700:4700::1001"
+                }
+                range 0 {
+                    option {
+                        name-server "2606:4700:4700::1111"
+                        name-server "2606:4700:4700::1001"
+                    }
+                    prefix "fd00:4274:7372:222::/64"
+                    start "fd00:4274:7372:222::100"
+                    stop "fd00:4274:7372:222::1ff"
+                }
+                subnet-id "222"
+            }
+        }
+        shared-network-name VLAN248_NETNGNRS {
+            description "DHCPv6 server for DNS-servers & captive-portal"
+            interface "br1.248"
+            subnet fd00:4274:7372:248::/64 {
+                option {
+                    name-server "2606:4700:4700::1111"
+                    name-server "2606:4700:4700::1001"
+                }
+                range 0 {
+                    option {
+                        name-server "2606:4700:4700::1111"
+                        name-server "2606:4700:4700::1001"
+                    }
+                    prefix "fd00:4274:7372:248::/64"
+                    start "fd00:4274:7372:248::100"
+                    stop "fd00:4274:7372:248::1ff"
+                }
+                subnet-id "248"
+            }
+        }
+    }
+    mdns {
+        repeater {
+            cache-entries "512"
+            interface "br1.3"
+            interface "br1.13"
+        }
+    }
+    monitoring {
+    }
+    /* Let Router act as NTP-Server for accurate time */
+    ntp {
+        allow-client {
+            address "127.0.0.0/8"
+            address "169.254.0.0/16"
+            address "10.0.0.0/8"
+            address "172.16.0.0/12"
+            address "192.168.0.0/16"
+            address "::1/128"
+            address "fe80::/10"
+            address "fc00::/7"
+        }
+        server be.pool.ntp.org {
+        }
+        server pool.ntp.org {
+            prefer
+        }
+        server time.cloudflare.com {
+        }
+    }
+    Router-advert {
+        interface br1.2 {
+            name-server "2606:4700:4700::1111"
+            name-server "2606:4700:4700::1001"
+            other-config-flag
+            prefix fd00:4274:7372:2::/64 {
+            }
+        }
+        interface br1.3 {
+            name-server "2606:4700:4700::1111"
+            name-server "2606:4700:4700::1001"
+            other-config-flag
+            prefix fd00:4274:7372:3::/64 {
+            }
+        }
+        interface br1.13 {
+            name-server "2606:4700:4700::1111"
+            name-server "2606:4700:4700::1001"
+            other-config-flag
+            prefix fd00:4274:7372:13::/64 {
+            }
+        }
+        interface br1.66 {
+            name-server "2606:4700:4700::1111"
+            name-server "2606:4700:4700::1001"
+            other-config-flag
+            prefix fd00:4274:7372:66::/64 {
+            }
+        }
+        interface br1.145 {
+            name-server "2606:4700:4700::1111"
+            name-server "2606:4700:4700::1001"
+            other-config-flag
+            prefix fd00:4274:7372:145::/64 {
+            }
+        }
+        interface br1.222 {
+            name-server "2606:4700:4700::1111"
+            name-server "2606:4700:4700::1001"
+            other-config-flag
+            prefix fd00:4274:7372:222::/64 {
+            }
+        }
+        interface br1.248 {
+            name-server "2606:4700:4700::1111"
+            name-server "2606:4700:4700::1001"
+            other-config-flag
+            prefix fd00:4274:7372:248::/64 {
+            }
+        }
+    }
+    /* Run SSH-Server on Router for remote configuring */
+    ssh {
+        listen-address "10.222.0.3"
+        port "22"
+    }
+}
+/* System settings of the Router itself */
+system {
+    config-management {
+        commit-revisions "100"
+    }
+    conntrack {
+        table-size "524287"
+        timeout {
+            custom {
+                ipv4 {
+                    rule 10 {
+                        protocol {
+                            tcp {
+                                close "10"
+                                established "3600"
+                            }
+                        }
+                    }
+                    rule 20 {
+                        protocol {
+                            udp {
+                                replied "60"
+                                unreplied "10"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    console {
+        device ttyS0 {
+            speed "115200"
+        }
+    }
+    domain-name "bytser.lan"
+    host-name "Main-Router"
+    /* Configure everything related to Router acces */
+    login {
+        banner {
+            post-login "\n\nBytser.com - Main-Router\nAll commands have to be tested in development.\nYou will be held responsible for all commands you execute.\nIn any case of suspicious/abnormal activities immediately contact your supervisor."
+            pre-login "Bytser.com\nThis is a Edge-Router, changes have to be approved before executing.\nIf you think you need access to this device contact your supervisor.\nAll connections are logged (Also this current connection).\n"
+        }
+        max-login-session "5"
+        timeout "180"
+        user vyos {
+            authentication {
+                encrypted-password "$6$rounds=656000$Z.TWlPM3f8PTH/G8$T.3cc425IkP4WZzhNyxm4M0xQyuYSSP7oW/YvaAX50c3yHncvJTuPwm1TWYmT/je2XlnCLIq2l1AimRBL9dvR0"
+                plaintext-password ""
+            }
+        }
+    }
+    name-server "1.1.1.1"
+    name-server "1.0.0.1"
+    option {
+        ctrl-alt-delete "reboot"
+        performance "network-throughput"
+        reboot-on-panic
+        reboot-on-upgrade-failure "5"
+        time-format "24-hour"
+    }
+    sysctl {
+        parameter net.ipv4.conf.all.rp_filter {
+            value "1"
+        }
+        parameter net.ipv4.conf.default.rp_filter {
+            value "1"
+        }
+    }
+    syslog {
+        console {
+            facility all {
+                level "emerg"
+            }
+        }
+        local {
+            facility all {
+                level "info"
+            }
+            facility local7 {
+                level "debug"
+            }
+        }
+        remote 10.24.8.99 {
+            facility all {
+                level "all"
+            }
+            port "99"
+            protocol "udp"
+        }
+        remote log.bytser.be {
+            facility all {
+                level "all"
+            }
+            port "99"
+            protocol "udp"
+        }
+    }
+    time-zone "Europe/Brussels"
+}
+
+
+// Warning: Do not remove the following line.
+// vyos-config-version: "bgp@6:broadcast-relay@1:cluster@2:config-management@1:conntrack@6:conntrack-sync@2:container@3:dhcp-relay@2:dhcp-server@11:dhcpv6-server@6:dns-dynamic@4:dns-forwarding@4:firewall@20:flow-accounting@3:https@7:ids@2:interfaces@34:ipoe-server@4:ipsec@13:isis@3:l2tp@9:lldp@3:mdns@1:monitoring@2:nat@8:nat66@3:nhrp@1:ntp@3:openconnect@3:openvpn@4:ospf@2:pim@1:policy@9:pppoe-server@11:pptp@5:qos@3:quagga@12:reverse-proxy@3:rip@1:rpki@2:salt@1:snmp@3:ssh@2:sstp@6:system@29:vpp@1:vrf@3:vrrp@4:vyos-accel-ppp@2:wanloadbalance@4:webproxy@2"
+// Release version: 2025.09.17-0018-rolling

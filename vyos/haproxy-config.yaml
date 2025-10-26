@@ -1,0 +1,136 @@
+global
+    # Loginstellingen: stuur logs naar de lokale syslog daemon
+    log /dev/log    daemon
+    # Werkdirectory voor HAProxy processen
+    chroot /var/lib/haproxy
+    # Socket voor administratieve taken (bijv. 'socat /run/haproxy/admin.sock' voor CLI)
+    stats socket /run/haproxy/admin.sock mode 660 level admin expose-fd listeners
+    # Timeout voor de stats socket
+    stats timeout 30s
+    # Gebruiker en groep waaronder HAProxy draait
+    user haproxy
+    group haproxy
+    # HAProxy draait als een daemon op de achtergrond
+    daemon
+
+    # Optioneel: Limiet op het aantal open bestandsdescriptoren
+    # maxconn 20000
+
+    # Optioneel: Aantal HAProxy-processen (meestal 1 per CPU-kern voor optimale prestaties)
+    # nbproc 1 # Of nbproc 4 als je 4 CPU kernen hebt
+    # Optioneel: CPU affinity voor elk proces (voor nbproc > 1)
+    # cpu-map 1 0
+    # cpu-map 2 1
+    # ...
+
+defaults
+    # Standaardmodus is 'tcp' omdat we ruwe TCP-verbindingen ontvangen van VyOS
+    mode tcp
+    # Standaard timeout voor client-verbindingen
+    timeout client 10s
+    # Standaard timeout voor het opbouwen van een verbinding met een backend server
+    timeout connect 5s
+    # Standaard timeout voor de server-kant van de verbinding
+    timeout server 10s
+    # Standaard timeout voor TCP-tunnels (belangrijk voor langlopende SSH-verbindingen)
+    timeout tunnel 1h
+    # Log alle verbindingen met globale instellingen
+    log global
+
+# Frontend die luistert naar ALLE inkomende verbindingen van de VyOS router op poort 8080
+frontend main_proxy_listener
+    # Luister op alle beschikbare IP-adressen op poort 8080
+    # 'accept-proxy' is CRUCIAAL: dit vertelt HAProxy dat de inkomende verbindingen
+    # een Proxy Protocol v2 header bevatten (verstuurd door VyOS)
+    bind *:8080 accept-proxy
+    # De modus van deze frontend is 'tcp' omdat we op Layer 4 opereren
+    mode tcp
+
+    # 'tcp-request inspect-delay' geeft HAProxy tijd om de TLS ClientHello te lezen (waarin SNI zit)
+    tcp-request inspect-delay 1s
+    tcp-request content accept
+
+    # ACLs om de oorspronkelijke doelpoort te detecteren
+    acl is_original_port_80 dst_port 80
+    acl is_original_port_443 dst_port 443
+
+    # ACLs voor HTTPS hostname (SNI - Server Name Indication)
+    acl is_bytser_be req_ssl_sni -i bytser.be
+    acl is_bytser2_be req_ssl_sni -i bytser2.be
+
+    # --- Routingregels: De volgorde is BELANGRIJK (meest specifieke regels eerst) ---
+
+    # 2. HTTPS-verkeer: Oorspronkelijke poort 443 en hostname "bytser.be"
+    use_backend backend_https_bytser_be if is_original_port_443 is_bytser_be
+
+    # 3. HTTPS-verkeer: Oorspronkelijke poort 443 en hostname "bytser2.be"
+    use_backend backend_https_bytser2_be if is_original_port_443 is_bytser2_be
+
+    # 4. HTTPS-verkeer: Oorspronkelijke poort 443 ZONDER specifieke hostname-match
+    # Deze vangt al het resterende HTTPS-verkeer op poort 443 op.
+    use_backend backend_https_default if is_original_port_443
+
+    # 5. HTTP-verkeer: Oorspronkelijke poort 80
+    use_backend backend_http if is_original_port_80
+
+    # Optioneel: Standaardactie voor verkeer dat door geen enkele regel wordt gematcht
+    default_backend default_drop_connection
+
+# --- BACKEND DEFINITIES ---
+
+# Backend voor HTTP verkeer (oorspronkelijke poort 80)
+backend backend_http
+    mode tcp
+    balance leastconn
+    # AANBEVOLEN: HTTP health check voor webservers. Dit controleert of de webserver echt reageert op HTTP.
+    # Zorg ervoor dat je Nginx-servers een '/health'-endpoint hebben dat 200 OK teruggeeft
+    #option httpchk GET /health
+    server webserver_http 10.145.0.80:80 check
+    # Optioneel: Als je Nginx de originele cliënt-IP's en poorten via Proxy Protocol v2 moet zien,
+    # server webserver_http 10.145.0.80:80 check send-proxy-v2
+
+# Backend voor HTTPS verkeer - bytser.be (oorspronkelijke poort 443)
+backend backend_https_bytser_be
+    # Verkeer wordt als ruwe TCP doorgestuurd, SSL-terminatie gebeurt op de Nginx-server   
+    mode tcp
+    balance leastconn
+    #option httpchk GET /health
+    server webserver_https1 10.145.0.85:443 check
+    server webserver_https2 10.145.0.86:443 check
+
+# Backend voor HTTPS verkeer - bytser2.be (oorspronkelijke poort 443)
+backend backend_https_bytser2_be
+    mode tcp
+    balance leastconn
+    #option httpchk GET /health
+    server webserver_https3 10.145.0.87:443 check # VERVANG X met het juiste IP
+    server webserver_https4 10.145.0.88:443 check # VERVANG Y met het juiste IP
+
+# Backend voor HTTPS verkeer - Geen specifieke hostname match (oorspronkelijke poort 443)
+# Dit is de fallback voor HTTPS-verkeer op poort 443 dat niet overeenkomt met bytser.be of bytser2.be
+backend backend_https_default
+    mode tcp
+    balance leastconn
+    #option httpchk GET /health
+    server default_webserver_https1 10.145.0.80:443 check
+    server default_webserver_https2 10.145.0.81:443 check
+    server default_webserver_https3 10.145.0.82:443 check backup
+
+# Optionele backend om verkeer te droppen dat door geen enkele frontend-regel is gematcht
+# Dit is een goede beveiligingspraktijk.
+backend default_drop_connection
+    mode tcp
+    # Voorkom overmatige logging van gedropt verkeer
+    no log 
+    # Sluit de verbinding/sessie direct af
+    tcp-request content reject
+
+listen webinterface
+    bind 0.0.0.0:9000
+    mode http
+    stats enable
+    stats uri /haproxy
+    stats realm Strictly\ Private
+    stats auth admin:password
+    stats admin if TRUE
+    stats refresh 1s
